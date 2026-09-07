@@ -8,6 +8,7 @@ contract VerificationRegistry {
         bytes32 biometricCommitment;
         string sourceUrl;
         uint256 discoveredAt;
+        string ipfsCID;
     }
 
     mapping(bytes32 => ForensicAttestation) public registry;
@@ -22,7 +23,8 @@ contract VerificationRegistry {
         bytes32 _transportHash,
         bytes32 _pHash,
         bytes32 _bioCommitment,
-        string calldata _sourceUrl
+        string calldata _sourceUrl,
+        string calldata _ipfsCID
     ) external {
         require(
             registry[_transportHash].discoveredAt == 0,
@@ -34,7 +36,8 @@ contract VerificationRegistry {
             perceptualHash: _pHash,
             biometricCommitment: _bioCommitment,
             sourceUrl: _sourceUrl,
-            discoveredAt: block.timestamp
+            discoveredAt: block.timestamp,
+            ipfsCID: _ipfsCID
         });
 
         emit AttestationRecorded(_transportHash, _sourceUrl, block.timestamp);
@@ -44,16 +47,16 @@ contract VerificationRegistry {
         bytes32 _transportHash,
         bytes32 _pHash,
         bytes32 _bioCommitment
-    ) external view returns (bool, string memory, uint256) {
+    ) external view returns (bool, string memory, uint256, string memory) {
         ForensicAttestation memory attestation = registry[_transportHash];
         
         if (attestation.discoveredAt == 0) {
-            return (false, "", 0);
+            return (false, "", 0, "");
         }
 
         bool isValid = (attestation.perceptualHash == _pHash) && 
                        (attestation.biometricCommitment == _bioCommitment);
 
-        return (isValid, attestation.sourceUrl, attestation.discoveredAt);
+        return (isValid, attestation.sourceUrl, attestation.discoveredAt, attestation.ipfsCID);
     }
 }

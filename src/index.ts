@@ -5,6 +5,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { polygonAmoy, localhost } from 'viem/chains';
 import { performReverseSearch } from './modules/search.js';
 import { generateTransportHash, formatBytes32 } from './modules/hasher.js';
+import { pinToIPFS } from './modules/ipfs.js';
 
 async function main() {
     console.log(`\n🚀 Starting Dual-Layer Attestation Orchestrator\n`);
@@ -64,8 +65,12 @@ async function main() {
         process.exit(1);
     }
 
+    console.log(`\n[3/6] 🧊 Freezing Evidence to IPFS...`);
+    const ipfsCID = await pinToIPFS(imagePath);
+    console.log(`      ✅ IPFS CID: ${ipfsCID}`);
+
     // 4. Generate the Dual-Layer Attestation Fingerprints
-    console.log(`\n[3/5] 🔐 Generating Cryptographic Commitments...`);
+    console.log(`\n[4/6] 🔐 Generating Cryptographic Commitments...`);
     const discoveredAt = Math.floor(Date.now() / 1000);
     
     let transportHash = generateTransportHash(url, discoveredAt);
@@ -80,7 +85,7 @@ async function main() {
     console.log(`      ✅ Layer B (Bio Commitment): ${bioCommitment}`);
 
     // 5. Blockchain Transaction (Viem)
-    console.log(`\n[4/5] ⛓️  Recording Attestation on Blockchain...`);
+    console.log(`\n[5/6] ⛓️  Recording Attestation on Blockchain...`);
     
     if (!process.env.PRIVATE_KEY || !process.env.REGISTRY_CONTRACT_ADDRESS) {
         console.error("❌ Missing PRIVATE_KEY or REGISTRY_CONTRACT_ADDRESS in .env");
@@ -110,8 +115,8 @@ async function main() {
     });
 
     const abi = parseAbi([
-        'function recordAttestation(bytes32, bytes32, bytes32, string)',
-        'function verifyIntegrity(bytes32, bytes32, bytes32) view returns (bool, string, uint256)'
+        'function recordAttestation(bytes32, bytes32, bytes32, string, string)',
+        'function verifyIntegrity(bytes32, bytes32, bytes32) view returns (bool, string, uint256, string)'
     ]);
 
     const contractAddress = process.env.REGISTRY_CONTRACT_ADDRESS as `0x${string}`;
@@ -123,7 +128,7 @@ async function main() {
             address: contractAddress,
             abi,
             functionName: 'recordAttestation',
-            args: [transportHash, pHash32, bioCommitment, url]
+            args: [transportHash, pHash32, bioCommitment, url, ipfsCID]
         });
         txHash = await walletClient.writeContract(request);
         console.log(`      ⏳ Transaction sent. Waiting for receipt... (Tx: ${txHash})`);
@@ -136,7 +141,7 @@ async function main() {
     }
 
     // 6. On-Chain Verification
-    console.log(`\n[5/5] 🛡️  Verifying Attestation Integrity...`);
+    console.log(`\n[6/6] 🛡️  Verifying Attestation Integrity...`);
     
     if (isTamperAttack) {
         console.log(`\n⚠️  [!] TAMPER ATTACK INITIATED: Corrupting evidence payload...`);
@@ -149,9 +154,9 @@ async function main() {
             abi,
             functionName: 'verifyIntegrity',
             args: [transportHash, pHash32, bioCommitment]
-        }) as [boolean, string, bigint];
+        }) as [boolean, string, bigint, string];
 
-        const [isValid, sourceUrl, timestamp] = result;
+        const [isValid, sourceUrl, timestamp, returnedIpfsCID] = result;
 
         if (isValid) {
             console.log(`\n🎉===================================================🎉`);
@@ -159,6 +164,7 @@ async function main() {
             console.log(`🎉===================================================🎉\n`);
             console.log(`   Source URL: ${sourceUrl}`);
             console.log(`   Timestamp:  ${new Date(Number(timestamp) * 1000).toLocaleString()}`);
+            console.log(`   IPFS Archive: ${returnedIpfsCID}`);
             
             if (isLocal) {
                 const blockNum = await publicClient.getBlockNumber();

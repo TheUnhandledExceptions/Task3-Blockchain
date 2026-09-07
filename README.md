@@ -1,30 +1,36 @@
-# 🛡️ Dual-Layer Forensic Attestation Pipeline (HH Goa 2026 - Task 3)
+# 🛡️ Autonomous Forensic Attestation Pipeline (HH Goa 2026 - Task 3)
 
-An autonomous, privacy-preserving OSINT pipeline that takes a raw face image, identifies the exact source on social media, and notarizes the discovery on an EVM blockchain to create an immutable chain-of-custody.
+An enterprise-grade OSINT pipeline that takes a raw face image, autonomously identifies the exact source on social media, freezes the evidence to a decentralized network, and notarizes the discovery on an EVM blockchain.
 
-## 🚀 The USP: Dual-Layer Tamper Resistance
-Most reverse-image pipelines fail in the real world because social media platforms aggressively compress and alter images (WebP conversions, EXIF stripping). A simple `SHA-256` of a downloaded image will break instantly upon verification.
+## 🚀 The Unique Selling Propositions (USPs)
 
-This project solves the **"Compression Paradox"** by utilizing a **Dual-Layer Attestation**:
-1. **Layer A (Transport Proof):** SHA-256 of the raw discovered URL and timestamp.
-2. **Layer B (Invariant Proof):** A 64-bit Perceptual Hash (pHash) combined with a 128-dimensional biometric vector commitment. 
-Even if the image is heavily compressed by Instagram/Facebook, the biometric and perceptual hashes remain stable, proving the identity inextricably belongs to the URL.
+### USP 1: Dual-Layer Tamper Resistance (Solving the Compression Paradox)
+Standard reverse-image pipelines fail because social platforms aggressively compress images (WebP conversions, EXIF stripping). A simple `SHA-256` of a downloaded image breaks instantly upon verification.
+This project uses a **Dual-Layer Attestation**:
+* **Layer A (Transport Proof):** SHA-256 of the raw discovered URL and timestamp.
+* **Layer B (Invariant Proof):** A 64-bit Perceptual Hash (pHash) combined with a 128-dimensional biometric vector commitment. 
+Even if Instagram compresses the image, the biometric and perceptual hashes remain stable, proving the identity inextricably belongs to the URL.
+
+### USP 2: The IPFS 404-Shield (Decentralized Evidence Vault)
+If a bad actor deletes their social media post, standard blockchain records point to a `404 Not Found` URL, destroying the evidence. 
+The instant this pipeline discovers a post, it freezes the raw evidence and uploads it to the **InterPlanetary File System (IPFS)** via Pinata. The permanent `ipfs://` CID is written to the blockchain, ensuring the evidence survives even if the original platform goes offline.
+
+### USP 3: Blinded Biometric Privacy (GDPR-Safe)
+Storing raw facial vectors on a public ledger is a severe privacy violation. This pipeline utilizes a **Blinded Biometric Commitment scheme**. The 128-dimensional facial embedding is mathematically blinded using Keccak256 before being sent to the EVM. The public ledger only sees cryptographic noise, verifying identity without leaking Personally Identifiable Information (PII).
 
 ## 🏗️ Architecture
 
-1. **The Python Chef (Computer Vision):** Uses OpenCV's DNN (YuNet) to detect faces, extract a 128-d biometric feature vector, and calculate a perceptual hash (pHash). It also intelligently resizes the full image to bypass API constraints.
-2. **The TypeScript Orchestrator:** Hits the **SerpApi (Google Lens)** engine with the context-rich resized image to discover the real, canonical social media post (e.g., Instagram, Facebook, X).
-3. **The EVM Vault:** Packs the evidence into a cryptographic EIP-712 style struct and commits it to a smart contract registry.
+1. **The Python Chef (Computer Vision):** Uses OpenCV's DNN (YuNet) to detect faces, extract a 128-d biometric feature vector, and calculate a perceptual hash. It intelligently resizes the full image to bypass search API limits while maintaining context.
+2. **The TypeScript Orchestrator:** Hits the **SerpApi (Google Lens)** engine to discover the canonical social media post, pins the evidence to IPFS, and signs the EIP-712 style transaction.
+3. **The EVM Vault:** A Solidity smart contract (deployed on Anvil / Polygon Amoy) that permanently stores the dual-layer fingerprints and the IPFS CID.
 
 ## ⚙️ Installation & Setup
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (3.10+)
-- Foundry (Forge, Anvil, Cast)
+- Node.js (v18+) | Python (3.10+) | Foundry (Forge, Anvil, Cast)
 
 ### Setup Steps
-1. **Clone & Install Dependencies:**
+1. **Install Dependencies:**
    ```bash
    npm install
    python -m venv .venv
@@ -32,22 +38,20 @@ Even if the image is heavily compressed by Instagram/Facebook, the biometric and
    pip install -r requirements.txt
    ```
 
-2. **Environment Variables:**
-   Create a `.env` file in the root directory:
+2. **Environment Variables (.env):**
    ```env
    SERPAPI_API_KEY=your_serpapi_key
+   PINATA_JWT=your_pinata_jwt
    AMOY_RPC_URL=http://127.0.0.1:8545
    PRIVATE_KEY=your_testnet_or_anvil_private_key
    REGISTRY_CONTRACT_ADDRESS=your_deployed_contract_address
    ```
 
-3. **Deploy the Smart Contract:**
-   Start your local blockchain:
+3. **Start Local EVM & Deploy Vault:**
    ```bash
    anvil
-   ```
-   In a new terminal, deploy the vault:
-   ```bash
+   
+   # In a new terminal:
    forge script contracts/script/DeployRegistry.s.sol:DeployRegistry --rpc-url http://127.0.0.1:8545 --broadcast
    ```
 
@@ -57,26 +61,19 @@ Even if the image is heavily compressed by Instagram/Facebook, the biometric and
    ```bash
    npx tsx src/index.ts images/test_image.png
    ```
-   Detects the face, finds the social post, generates the dual-layer hash, and verifies it on-chain.
+   *Detects face → Finds post → Freezes to IPFS → Hashes data → Verifies on-chain.*
+   
+   ![Happy Path Execution](images/working/cmd%201%20working.jpeg)
 
 2. **The Red-Team Tamper Attack:**
    ```bash
    npx tsx src/index.ts images/test_image.png --tamper
    ```
-   Simulates a bad actor attempting to verify a corrupted/deepfaked URL against the blockchain record. The smart contract actively intercepts the mismatch and triggers an INTEGRITY BREACH DETECTED alert.
+   *Simulates a bad actor attempting to verify a corrupted/deepfaked URL against the blockchain record. The smart contract actively intercepts the mismatch and triggers an INTEGRITY BREACH DETECTED alert.*
+   
+   ![Tamper Attack Execution](images/working/cmd%202%20working.jpeg)
 
 ## 🔗 Blockchain Details
-This project is configured to run on Anvil (for zero-latency local forensic simulation) and is 100% compatible with the Polygon Amoy Testnet.
-- **Smart Contract:** Written in Solidity `^0.8.20`.
-- **Client Library:** `viem` for robust, type-safe EVM interactions.
-
-## ⚠️ Known Limitations
-- **API Rate Limits:** SerpApi free tier restricts throughput to 100 searches per month.
-- **Extreme Angles:** OpenCV's YuNet struggles with extreme profile faces (greater than 75-degree yaw).
-- **Video Processing:** Currently only supports static image frames.
-
-## ⚖️ Ethical & Privacy Considerations
-Searching the live web for faces introduces massive privacy concerns. To adhere to GDPR and prevent public biometric surveillance:
-- **Zero-Knowledge Commitments:** The raw 128-dimensional facial embeddings are never stored on the blockchain in plaintext. They are mathematically blinded (hashed) before being sent to the EVM.
-- The public ledger only sees cryptographic noise, ensuring the system verifies identity without ever leaking reversible Personally Identifiable Information (PII) to the public domain.
-
+- Configured for Anvil (zero-latency local forensic simulation) and 100% compatible with Polygon Amoy.
+- **Contract:** Solidity `^0.8.20`.
+- **Client:** `viem` for robust EVM interactions.

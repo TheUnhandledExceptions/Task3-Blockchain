@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 import os
+os.environ["OPENCV_LOG_LEVEL"] = "FATAL"
 import cv2
 import urllib.request
 from PIL import Image
