@@ -29,4 +29,64 @@ Even if the image is heavily compressed by Instagram/Facebook, the biometric and
    npm install
    python -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt# Task3-Blockchain
+   pip install -r requirements.txt
+   ```
+
+2. **Environment Variables:**
+   Create a `.env` file in the root directory:
+   ```env
+   SERPAPI_API_KEY=your_serpapi_key
+   AMOY_RPC_URL=http://127.0.0.1:8545
+   PRIVATE_KEY=your_testnet_or_anvil_private_key
+   REGISTRY_CONTRACT_ADDRESS=your_deployed_contract_address
+   ```
+
+3. **Deploy the Smart Contract:**
+   Start your local blockchain:
+   ```bash
+   anvil
+   ```
+   In a new terminal, deploy the vault:
+   ```bash
+   forge script contracts/script/DeployRegistry.s.sol:DeployRegistry --rpc-url http://127.0.0.1:8545 --broadcast
+   ```
+
+## 💻 Usage & Live Tamper Demo
+
+1. **Standard Evidence Processing (The Happy Path):**
+   ```bash
+   npx tsx src/index.ts images/test_image.png
+   ```
+   Detects the face, finds the social post, generates the dual-layer hash, and verifies it on-chain.
+
+2. **The Red-Team Tamper Attack:**
+   ```bash
+   npx tsx src/index.ts images/test_image.png --tamper
+   ```
+   Simulates a bad actor attempting to verify a corrupted/deepfaked URL against the blockchain record. The smart contract actively intercepts the mismatch and triggers an INTEGRITY BREACH DETECTED alert.
+
+## 🔗 Blockchain Details
+This project is configured to run on Anvil (for zero-latency local forensic simulation) and is 100% compatible with the Polygon Amoy Testnet.
+- **Smart Contract:** Written in Solidity `^0.8.20`.
+- **Client Library:** `viem` for robust, type-safe EVM interactions.
+
+## ⚠️ Known Limitations
+- **API Rate Limits:** SerpApi free tier restricts throughput to 100 searches per month.
+- **Extreme Angles:** OpenCV's YuNet struggles with extreme profile faces (greater than 75-degree yaw).
+- **Video Processing:** Currently only supports static image frames.
+
+## ⚖️ Ethical & Privacy Considerations
+Searching the live web for faces introduces massive privacy concerns. To adhere to GDPR and prevent public biometric surveillance:
+- **Zero-Knowledge Commitments:** The raw 128-dimensional facial embeddings are never stored on the blockchain in plaintext. They are mathematically blinded (hashed) before being sent to the EVM.
+- The public ledger only sees cryptographic noise, ensuring the system verifies identity without ever leaking reversible Personally Identifiable Information (PII) to the public domain.
+
+---
+
+### Moving to the "Full Architecture" (The IPFS 404-Shield)
+
+Now that our code is safely locked in Git, we can add the next USP: **The IPFS 404-Shield**.
+
+**The Goal:**
+Right now, if Shah Rukh Khan deletes that Instagram post, our `url` on the blockchain points to a broken link. We are going to upgrade our Orchestrator to automatically download the image bytes from Instagram, package them, and upload them to **IPFS (InterPlanetary File System)** using Pinata. This creates a permanent, decentralized forensic backup that survives even if the original post is deleted.
+
+To do this, you will need a free **Pinata API Key** (takes 1 minute to get at pinata.cloud). 
