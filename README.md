@@ -57,21 +57,34 @@ Storing raw facial vectors on a public ledger is a severe privacy violation. Thi
 
 ## 💻 Usage & Live Tamper Demo
 
-1. **Standard Evidence Processing (The Happy Path):**
-   ```bash
-   npx tsx src/index.ts images/test_image.png
-   ```
-   *Detects face → Finds post → Freezes to IPFS → Hashes data → Verifies on-chain.*
-   
-   ![Happy Path Execution](images/working/cmd%201%20working.jpeg)
+### 1. Standard Evidence Processing (The Happy Path)
+```bash
+npx tsx src/index.ts images/test_image.png
+```
+**Under the Hood:**
+* **CV Extraction:** We execute `src/python/face_engine.py` to isolate the face, extract a 128-d vector, and hash the biometric structure.
+* **OSINT Search:** We hit SerpApi using `src/modules/search.ts` to reverse-search the face across the web and retrieve the canonical URL.
+* **Evidence Freezing:** The `src/modules/ipfs.ts` module uses Pinata to pin the raw image permanently to IPFS.
+* **Blockchain Commit:** In `src/index.ts`, we cryptographically bind the URL, pHash, and Blinded Biometric vector using Viem, and send it to the `recordAttestation` function in our `VerificationRegistry.sol` smart contract.
 
-2. **The Red-Team Tamper Attack:**
-   ```bash
-   npx tsx src/index.ts images/test_image.png --tamper
-   ```
-   *Simulates a bad actor attempting to verify a corrupted/deepfaked URL against the blockchain record. The smart contract actively intercepts the mismatch and triggers an INTEGRITY BREACH DETECTED alert.*
-   
-   ![Tamper Attack Execution](images/working/cmd%202%20working.jpeg)
+![Happy Path Execution](images/working/cmd%201%20working.jpeg)
+
+### 2. The Red-Team Tamper Attack
+```bash
+npx tsx src/index.ts images/test_image.png --tamper
+```
+**Under the Hood:**
+* The `--tamper` flag intercepts the pipeline right before the final verification step in `src/index.ts`.
+* **The Simulation:** We purposefully corrupt the Transport Hash by appending `"_FAKE_DEEPFAKE"` to the discovered URL before verifying:
+  ```typescript
+  if (isTamperAttack) {
+      transportHash = generateTransportHash(url + "_FAKE_DEEPFAKE", discoveredAt);
+  }
+  ```
+* **The Interception:** When we pass this corrupted hash to `verifyIntegrity` in `VerificationRegistry.sol`, the smart contract realizes the cryptographic payload doesn't match the original immutable record. 
+* It actively rejects the mismatch and triggers the massive red `INTEGRITY BREACH DETECTED` alert, proving that deepfakes or altered URLs cannot bypass our Dual-Layer Attestation.
+
+![Tamper Attack Execution](images/working/cmd%202%20working.jpeg)
 
 ## 🔗 Blockchain Details
 - Configured for Anvil (zero-latency local forensic simulation) and 100% compatible with Polygon Amoy.
