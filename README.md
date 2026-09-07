@@ -80,13 +80,3 @@ Searching the live web for faces introduces massive privacy concerns. To adhere 
 - **Zero-Knowledge Commitments:** The raw 128-dimensional facial embeddings are never stored on the blockchain in plaintext. They are mathematically blinded (hashed) before being sent to the EVM.
 - The public ledger only sees cryptographic noise, ensuring the system verifies identity without ever leaking reversible Personally Identifiable Information (PII) to the public domain.
 
----
-
-### Moving to the "Full Architecture" (The IPFS 404-Shield)
-
-Now that our code is safely locked in Git, we can add the next USP: **The IPFS 404-Shield**.
-
-**The Goal:**
-Right now, if Shah Rukh Khan deletes that Instagram post, our `url` on the blockchain points to a broken link. We are going to upgrade our Orchestrator to automatically download the image bytes from Instagram, package them, and upload them to **IPFS (InterPlanetary File System)** using Pinata. This creates a permanent, decentralized forensic backup that survives even if the original post is deleted.
-
-To do this, you will need a free **Pinata API Key** (takes 1 minute to get at pinata.cloud). 
