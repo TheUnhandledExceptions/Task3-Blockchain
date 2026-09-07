@@ -27,6 +27,17 @@ Storing raw facial vectors on a public ledger is a severe privacy violation. Thi
 2. **The Command Center (TUI):** A `btop`-style dashboard written in TypeScript/Blessed that natively manages the Python environment, runs the pipeline, highlights clickable evidence URLs, and safely auto-exits via a timeout loop.
 3. **The EVM Vault:** A Solidity smart contract (deployed on Anvil / Polygon Amoy) that calculates biometric dot-products and permanently stores the dual-layer fingerprints.
 
+## 🌐 Environment-Agnostic Architecture (Why Anvil?)
+
+This project is built using **Viem** and **Foundry**, making the codebase 100% environment-agnostic ("Write Once, Deploy Anywhere"). 
+
+While the system is fully compatible with public testnets like Polygon Amoy, **Anvil (Local EVM)** is used as the default forensic environment for three enterprise-grade reasons:
+1. **Privacy & OPSEC:** In real-world OSINT, uploading investigation timestamps to public block explorers alerts targets that they are being investigated. A local simulated node acts as a secure, private AppChain.
+2. **Deterministic Reliability:** Public testnets rely on rate-limited third-party RPCs and faucets. Anvil provides zero-latency deterministic execution, crucial for iterating complex EVM math (like USP 3).
+3. **Instant Migration:** Transitioning to a live public testnet requires **zero code refactoring**. We simply hot-swap the `RPC_URL` and `PRIVATE_KEY` in the `.env` file, and Viem automatically routes the transaction to the live internet.
+
+![Anvil Local Node Running](images/working/Anvil.png)
+
 ## ⚙️ Installation & Setup
 
 ### Prerequisites
