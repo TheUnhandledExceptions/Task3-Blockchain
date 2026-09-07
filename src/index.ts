@@ -116,7 +116,8 @@ async function main() {
 
     const abi = parseAbi([
         'function recordAttestation(bytes32, bytes32, bytes32, string, string)',
-        'function verifyIntegrity(bytes32, bytes32, bytes32) view returns (bool, string, uint256, string)'
+        'function verifyIntegrity(bytes32, bytes32, bytes32) view returns (bool, string, uint256, string)',
+        'function verifyBiometricMatch(int16[128], int16[128]) view returns (bool, int256)'
     ]);
 
     const contractAddress = process.env.REGISTRY_CONTRACT_ADDRESS as `0x${string}`;
@@ -141,7 +142,7 @@ async function main() {
     }
 
     // 6. On-Chain Verification
-    console.log(`\n[6/6] 🛡️  Verifying Attestation Integrity...`);
+    console.log(`\n[6/7] 🛡️  Verifying Attestation Integrity...`);
     
     if (isTamperAttack) {
         console.log(`\n⚠️  [!] TAMPER ATTACK INITIATED: Corrupting evidence payload...`);
@@ -177,6 +178,26 @@ async function main() {
             console.error(`  ❌ [!] INTEGRITY BREACH DETECTED`);
             console.error(`🚨===================================================🚨\n`);
             console.error(`   The evidence payload has been tampered with or does not exist on-chain!`);
+        }
+
+        console.log('\n[7/7] 🧮 Executing EVM-Native Biometric Consensus...');
+        let candidateVector = embedding_quantized;
+        if (isTamperAttack) {
+            candidateVector = candidateVector.map((val: number, i: number) => i % 2 === 0 ? -val : val);
+        }
+
+        const [isMatch, score] = await publicClient.readContract({
+            address: contractAddress,
+            abi,
+            functionName: 'verifyBiometricMatch',
+            args: [embedding_quantized, candidateVector]
+        }) as [boolean, bigint];
+
+        const percentage = (Number(score) / 1000000).toFixed(2);
+        if (isMatch) {
+            console.log(`      ✅ Biometric Consensus Reached! Match Confidence: ${percentage}%`);
+        } else {
+            throw new Error("BIOMETRIC REJECTION: Face vectors do not match! (Score: " + percentage + "%)");
         }
     } catch (e: any) {
         console.error(`\n🚨===================================================🚨`);

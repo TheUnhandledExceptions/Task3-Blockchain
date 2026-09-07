@@ -59,4 +59,18 @@ contract VerificationRegistry {
 
         return (isValid, attestation.sourceUrl, attestation.discoveredAt, attestation.ipfsCID);
     }
+
+    function computeCosineSimilarity(int16[128] calldata vecA, int16[128] calldata vecB) public pure returns (int256) {
+        int256 dotProduct = 0;
+        for (uint256 i = 0; i < 128; i++) {
+            dotProduct += int256(vecA[i]) * int256(vecB[i]);
+        }
+        return dotProduct;
+    }
+
+    function verifyBiometricMatch(int16[128] calldata originalVector, int16[128] calldata candidateVector) public pure returns (bool isMatch, int256 similarityScore) {
+        similarityScore = computeCosineSimilarity(originalVector, candidateVector);
+        isMatch = similarityScore > 85000000;
+        return (isMatch, similarityScore);
+    }
 }
