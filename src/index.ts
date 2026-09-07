@@ -193,7 +193,7 @@ async function main() {
             args: [embedding_quantized, candidateVector]
         }) as [boolean, bigint];
 
-        const percentage = (Number(score) / 1000000).toFixed(2);
+        const percentage = (Number(score) / 128000000).toFixed(2);
         if (isMatch) {
             console.log(`      ✅ Biometric Consensus Reached! Match Confidence: ${percentage}%`);
         } else {

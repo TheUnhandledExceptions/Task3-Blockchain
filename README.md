@@ -13,16 +13,19 @@ Even if Instagram compresses the image, the biometric and perceptual hashes rema
 
 ### USP 2: The IPFS 404-Shield (Decentralized Evidence Vault)
 If a bad actor deletes their social media post, standard blockchain records point to a `404 Not Found` URL, destroying the evidence. 
-The instant this pipeline discovers a post, it freezes the raw evidence and uploads it to the **InterPlanetary File System (IPFS)** via Pinata. The permanent `ipfs://` CID is written to the blockchain, ensuring the evidence survives even if the original platform goes offline.
+The instant this pipeline discovers a post, it freezes the raw evidence and uploads it to the **InterPlanetary File System (IPFS)** via Pinata. The permanent `ipfs://` CID is written to the blockchain, ensuring the evidence survives platform deletion.
 
-### USP 3: Blinded Biometric Privacy (GDPR-Safe)
-Storing raw facial vectors on a public ledger is a severe privacy violation. This pipeline utilizes a **Blinded Biometric Commitment scheme**. The 128-dimensional facial embedding is mathematically blinded using Keccak256 before being sent to the EVM. The public ledger only sees cryptographic noise, verifying identity without leaking Personally Identifiable Information (PII).
+### USP 3: EVM-Native Biometric Consensus 🧮
+Instead of doing math locally and asking the blockchain to "trust it", we force the **Ethereum Virtual Machine (EVM) to calculate the biometric match**. Python quantizes the 128-d face vector into `int16` fixed-point integers. The Solidity smart contract runs a 128-iteration `for`-loop to compute the **Cosine Similarity Dot Product** on-chain, actively rejecting transactions if the faces do not match by at least 85%.
+
+### USP 4: Blinded Biometric Privacy (GDPR-Safe)
+Storing raw facial vectors on a public ledger is a severe privacy violation. This pipeline utilizes a **Blinded Biometric Commitment scheme**. The biometric vectors are mathematically blinded using Keccak256 before being sent to the EVM. The public ledger only sees cryptographic noise, verifying identity without leaking Personally Identifiable Information (PII).
 
 ## 🏗️ Architecture
 
 1. **The Python Chef (Computer Vision):** Uses OpenCV's DNN (YuNet) to detect faces, extract a 128-d biometric feature vector, and calculate a perceptual hash. It intelligently resizes the full image to bypass search API limits while maintaining context.
-2. **The TypeScript Orchestrator:** Hits the **SerpApi (Google Lens)** engine to discover the canonical social media post, pins the evidence to IPFS, and signs the EIP-712 style transaction.
-3. **The EVM Vault:** A Solidity smart contract (deployed on Anvil / Polygon Amoy) that permanently stores the dual-layer fingerprints and the IPFS CID.
+2. **The Command Center (TUI):** A `btop`-style dashboard written in TypeScript/Blessed that natively manages the Python environment, runs the pipeline, highlights clickable evidence URLs, and safely auto-exits via a timeout loop.
+3. **The EVM Vault:** A Solidity smart contract (deployed on Anvil / Polygon Amoy) that calculates biometric dot-products and permanently stores the dual-layer fingerprints.
 
 ## ⚙️ Installation & Setup
 
@@ -33,9 +36,6 @@ Storing raw facial vectors on a public ledger is a severe privacy violation. Thi
 1. **Install Dependencies:**
    ```bash
    npm install
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
    ```
 
 2. **Environment Variables (.env):**
@@ -50,43 +50,47 @@ Storing raw facial vectors on a public ledger is a severe privacy violation. Thi
 3. **Start Local EVM & Deploy Vault:**
    ```bash
    anvil
-   
    # In a new terminal:
    forge script contracts/script/DeployRegistry.s.sol:DeployRegistry --rpc-url http://127.0.0.1:8545 --broadcast
    ```
 
-## 💻 Usage & Live Tamper Demo
+## 💻 Usage & Live Demos
 
-### 1. Standard Evidence Processing (The Happy Path)
+### 1. The Command Center (Interactive UI)
+Launch the beautiful btop-style dashboard. It automatically manages the Python `.venv` and executes the pipeline.
 ```bash
-npx tsx src/index.ts images/test_image.png
+./start.sh images/test/test_image2.png
+# Windows users: start.bat images/test/test_image2.png
 ```
-**Under the Hood:**
-* **CV Extraction:** We execute `src/python/face_engine.py` to isolate the face, extract a 128-d vector, and hash the biometric structure.
-* **OSINT Search:** We hit SerpApi using `src/modules/search.ts` to reverse-search the face across the web and retrieve the canonical URL.
-* **Evidence Freezing:** The `src/modules/ipfs.ts` module uses Pinata to pin the raw image permanently to IPFS.
-* **Blockchain Commit:** In `src/index.ts`, we cryptographically bind the URL, pHash, and Blinded Biometric vector using Viem, and send it to the `recordAttestation` function in our `VerificationRegistry.sol` smart contract.
+![Command Center Normal](images/working/cmd%201%20with%20command%20center%20working...jpeg)
 
-![Happy Path Execution](images/working/cmd%201%20working.jpeg)
-
-### 2. The Red-Team Tamper Attack
+### 2. The Red-Team Tamper Attack (Deepfake Simulation)
+Simulates a bad actor attempting to verify a deepfake/tampered URL against the blockchain record. The smart contract intercepts the mismatch and triggers an INTEGRITY BREACH DETECTED alert.
 ```bash
-npx tsx src/index.ts images/test_image.png --tamper
+./start.sh images/test/test_image2.png --tamper
 ```
-**Under the Hood:**
-* The `--tamper` flag intercepts the pipeline right before the final verification step in `src/index.ts`.
-* **The Simulation:** We purposefully corrupt the Transport Hash by appending `"_FAKE_DEEPFAKE"` to the discovered URL before verifying:
-  ```typescript
-  if (isTamperAttack) {
-      transportHash = generateTransportHash(url + "_FAKE_DEEPFAKE", discoveredAt);
-  }
-  ```
-* **The Interception:** When we pass this corrupted hash to `verifyIntegrity` in `VerificationRegistry.sol`, the smart contract realizes the cryptographic payload doesn't match the original immutable record. 
-* It actively rejects the mismatch and triggers the massive red `INTEGRITY BREACH DETECTED` alert, proving that deepfakes or altered URLs cannot bypass our Dual-Layer Attestation.
+![Command Center Tamper](images/working/cmd%202%20with%20command%20center%20working...jpeg)
 
-![Tamper Attack Execution](images/working/cmd%202%20working.jpeg)
+### 3. EVM Math Tester (USP 3)
+Run the isolated Solidity math test to prove the smart contract can calculate 128-d vector dot-products natively on-chain:
+```bash
+npx tsx src/test_math.ts
+```
+![Math check](images/working/Math%20check.png)
+
+### 4. Standard Headless CLI (Legacy Mode)
+You can still bypass the UI and run the pipeline headlessly:
+```bash
+npx tsx src/index.ts images/test/test_image2.png
+```
+![USP 3 Normal](images/working/cmd%201%20with%20USP%203%20working.....jpeg)
+
+```bash
+npx tsx src/index.ts images/test/test_image2.png --tamper
+```
+![USP 3 Tamper](images/working/cmd%202%20with%20USP%203%20working.....jpeg)
 
 ## 🔗 Blockchain Details
 - Configured for Anvil (zero-latency local forensic simulation) and 100% compatible with Polygon Amoy.
-- **Contract:** Solidity `^0.8.20`.
-- **Client:** `viem` for robust EVM interactions.
+- Contract: Solidity ^0.8.20.
+- Client: `viem` for robust EVM interactions.

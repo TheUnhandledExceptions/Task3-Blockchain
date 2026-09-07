@@ -10,4 +10,5 @@ venv/
 contracts/out/
 contracts/cache/
 contracts/broadcast/
-.DS_Store\ncoverage/\n
+.DS_Store
+coverage/
